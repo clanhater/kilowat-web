@@ -8,7 +8,11 @@ const CONFIG = {
 	PHONE_NUMBER: "53523128",
     
     WHATSAPP_SUPPORT: "5356471292",
-    GITHUB_RELEASES_URL: "https://github.com/mariaelenabernia3-jpg/kilowat-game/releases/latest"
+    
+	// ENLACES DIRECTOS DE DESCARGA (1 CLIC)
+    // Apuntan a los instaladores base de tu release v1.0.0 en GitHub
+    DOWNLOAD_APK_URL: "https://github.com/clanhater/kilowat-web/releases/download/v1.0.0/Kilowat.apk",
+    DOWNLOAD_WINDOWS_URL: "https://github.com/clanhater/kilowat-web/releases/download/v1.0.0/Kilowat.exe"
 };
 
 // Inicialización del cliente Supabase

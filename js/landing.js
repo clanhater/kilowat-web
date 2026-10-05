@@ -112,3 +112,24 @@ async function initTournamentCountdown() {
     update();
     setInterval(update, 1000);
 }
+
+// Asigna los enlaces directos de descarga configurados en config.js
+document.addEventListener('DOMContentLoaded', () => {
+    setupDownloadButtons();
+});
+
+function setupDownloadButtons() {
+    const apkBtn = document.getElementById('btn-download-apk');
+    const winBtn = document.getElementById('btn-download-windows');
+    const mobileApkBtn = document.getElementById('btn-download-apk-mobile');
+
+    if (apkBtn && CONFIG.DOWNLOAD_APK_URL) {
+        apkBtn.href = CONFIG.DOWNLOAD_APK_URL;
+    }
+    if (winBtn && CONFIG.DOWNLOAD_WINDOWS_URL) {
+        winBtn.href = CONFIG.DOWNLOAD_WINDOWS_URL;
+    }
+    if (mobileApkBtn && CONFIG.DOWNLOAD_APK_URL) {
+        mobileApkBtn.href = CONFIG.DOWNLOAD_APK_URL;
+    }
+}
