@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /tienda.html
+Allow: /torneo.html
+Disallow: /admin.html
+
+Sitemap: https://kilowat-web.vercel.app/sitemap.xml
