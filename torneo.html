@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KILOWAT — Competencia de Potencia en Vivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#05070a',
+                        cardbg: '#0a0d14',
+                        cardborder: '#161f30',
+                        neoncian: '#00f2ff',
+                        neongold: '#ffbe1a',
+                        neongreen: '#00ffa3'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkbg text-gray-200 font-sans antialiased selection:bg-neongold selection:text-black">
+
+    <canvas id="electric-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+    <div class="fixed inset-0 cyber-grid pointer-events-none z-0"></div>
+
+    <!-- BARRA SUPERIOR TORNEO BLINDADA PARA MÓVILES -->
+    <header class="fixed top-0 left-0 w-full z-40 bg-darkbg/95 backdrop-blur-md border-b border-cardborder">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <a href="index.html" class="flex items-center space-x-1 px-2.5 py-2 rounded-xl bg-cardbg border border-cardborder text-gray-300 hover:text-white transition shrink-0 active:scale-95">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                <span class="text-xs font-bold uppercase hidden sm:inline">Inicio</span>
+            </a>
+
+            <div class="text-xs sm:text-base font-black text-neongold tracking-wider flex items-center gap-1.5 px-2">
+                <svg class="w-4 h-4 fill-current text-neongold shrink-0" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1c1.88-.41 3.32-1.9 3.61-3.96C19.08 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2z"/></svg>
+                <span class="sm:hidden">TORNEO 1K</span>
+                <span class="hidden sm:inline">TORNEO DE APERTURA</span>
+            </div>
+
+            <a href="tienda.html" class="px-3 py-2 bg-yellow-950/80 border border-yellow-700 text-neongold rounded-xl text-xs font-black uppercase tracking-wider hover:border-neongold transition shrink-0 active:scale-95">
+                Tienda
+            </a>
+
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 relative z-10">
+        
+        <!-- BANNER DEL PREMIO CON TEXTOS DE EVENTO ÚNICO -->
+        <div class="p-6 sm:p-8 bg-cardbg border-2 border-yellow-500/80 rounded-3xl glow-gold text-center mb-12 relative overflow-hidden">
+            <div class="flex flex-wrap items-center justify-center gap-2.5 mb-2">
+                <span class="px-3 py-1 bg-yellow-950/80 border border-yellow-700 text-neongold text-xs font-black uppercase tracking-wider rounded-full flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-neongold animate-ping"></span>
+                    Edición Única de Lanzamiento
+                </span>
+                <span class="px-3 py-1 bg-cyan-950/80 border border-cyan-800 text-neoncian text-xs font-mono font-bold rounded-full">
+                    Fin del Torneo: <strong id="tournament-countdown" class="text-white">Sincronizando...</strong>
+                </span>
+            </div>
+
+            <h1 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight mt-3">GRAN PREMIO: 1.000000 KILOWAT</h1>
+            <p class="text-xs sm:text-sm text-gray-300 mt-1 max-w-xl mx-auto leading-relaxed">
+                Evento especial por inauguración. El jugador en el puesto #1 al terminar el tiempo se lleva <strong class="text-neongreen font-mono">500 CUP</strong> directo a su cuenta del juego.
+            </p>
+        </div>
+
+        <!-- PODIO DE CAMPEONES (TOP 3 VISUAL) -->
+        <div class="mb-12">
+            <h2 class="text-center text-xs font-black text-gray-400 uppercase tracking-widest mb-8">PUESTO DE HONOR (LÍDERES EN VIVO)</h2>
+            <div id="podium-container" class="grid grid-cols-3 gap-2 sm:gap-4 items-end max-w-2xl mx-auto min-h-[220px]">
+                <div class="col-span-3 text-center text-xs font-bold text-gray-500 animate-pulse py-10">Cargando campeones...</div>
+            </div>
+        </div>
+
+        <!-- BUSCADOR Y TABLA COMPLETA -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <div class="relative flex-1">
+                <input type="text" id="search-player" placeholder="Escribe tu usuario para buscar tu puesto..." 
+                       class="w-full px-4 py-3 bg-cardbg border border-cardborder rounded-xl text-white text-sm focus:outline-none focus:border-neongold transition pl-10">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5 fill-current" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </div>
+            <button onclick="fetchLeaderboard()" class="px-6 py-3 bg-cyan-950 border border-cyan-800 text-neoncian rounded-xl text-xs font-bold hover:bg-neoncian hover:text-black transition flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                <span>Actualizar Tabla</span>
+            </button>
+        </div>
+
+        <div class="bg-cardbg border border-cardborder rounded-2xl overflow-hidden shadow-2xl">
+            <div class="px-6 py-4 bg-darkbg border-b border-cardborder flex justify-between text-xs font-black uppercase tracking-wider text-gray-400">
+                <span class="w-16">Rango</span>
+                <span class="flex-1">Jugador</span>
+                <span class="text-right">Potencia Total</span>
+            </div>
+            <div id="leaderboard-rows" class="divide-y divide-cardborder"></div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/landing.js"></script>
+    <script>
+        let fullLeaderboard = [];
+
+        document.addEventListener('DOMContentLoaded', fetchLeaderboard);
+        document.getElementById('search-player').addEventListener('input', (e) => {
+            filterLeaderboard(e.target.value.trim().toLowerCase());
+        });
+
+        async function fetchLeaderboard() {
+            const rowsContainer = document.getElementById('leaderboard-rows');
+            const podiumContainer = document.getElementById('podium-container');
+
+            const { data, error } = await supabaseClient
+                .from('event_leaderboard')
+                .select('username, event_power')
+                .order('event_power', { ascending: false })
+                .limit(50);
+
+            if (error || !data || data.length === 0) {
+                podiumContainer.innerHTML = `<div class="col-span-3 text-center text-xs text-gray-500 py-6">Sin participantes aún en esta ronda.</div>`;
+                rowsContainer.innerHTML = `
+                    <div class="py-16 text-center text-sm text-gray-500 font-bold">
+                        Aún no hay registros en la ronda actual.<br>
+                        <span class="text-xs text-neoncian mt-1 block">¡Sé el primero en ganar minijuegos en el juego para liderar!</span>
+                    </div>`;
+                return;
+            }
+
+            fullLeaderboard = data;
+            renderPodium(data.slice(0, 3));
+            renderRows(fullLeaderboard);
+        }
+
+        // Renderizado del Podio 3D para el Top 3
+        function renderPodium(top3) {
+            const container = document.getElementById('podium-container');
+            container.innerHTML = "";
+
+            const p1 = top3[0] || null;
+            const p2 = top3[1] || null;
+            const p3 = top3[2] || null;
+
+            // PUESTO 2 (PLATA) - Izquierda
+            container.innerHTML += `
+                <div class="flex flex-col items-center">
+                    <div class="text-[11px] font-bold text-gray-300 truncate max-w-full mb-1">${p2 ? p2.username : '—'}</div>
+                    <div class="text-[9px] font-mono text-neoncian mb-2">${p2 ? Number(p2.event_power).toFixed(9) : '0'} KWP</div>
+                    <div class="w-full h-24 sm:h-28 bg-gradient-to-t from-gray-900 to-gray-800 border-t-2 border-gray-400 rounded-t-xl flex flex-col items-center justify-center shadow-lg">
+                        <span class="text-xl sm:text-2xl font-black text-gray-300">#2</span>
+                        <span class="text-[9px] font-bold uppercase text-gray-400">Plata</span>
+                    </div>
+                </div>
+            `;
+
+            // PUESTO 1 (ORO) - Centro (Más alto con corona)
+            container.innerHTML += `
+                <div class="flex flex-col items-center -mt-6">
+                    <svg class="w-7 h-7 fill-current text-neongold animate-bounce mb-1 drop-shadow-[0_0_10px_rgba(255,190,26,0.8)]" viewBox="0 0 24 24"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5m14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/></svg>
+                    <div class="text-xs sm:text-sm font-black text-neongold truncate max-w-full mb-1">${p1 ? p1.username : '—'}</div>
+                    <div class="text-[10px] font-mono text-neongreen font-bold mb-2">${p1 ? Number(p1.event_power).toFixed(9) : '0'} KWP</div>
+                    <div class="w-full h-32 sm:h-36 bg-gradient-to-t from-yellow-950 to-yellow-900/80 border-t-2 border-neongold rounded-t-xl flex flex-col items-center justify-center glow-gold shadow-2xl relative">
+                        <span class="text-2xl sm:text-3xl font-black text-neongold">#1</span>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-yellow-300">Campeón</span>
+                    </div>
+                </div>
+            `;
+
+            // PUESTO 3 (BRONCE) - Derecha
+            container.innerHTML += `
+                <div class="flex flex-col items-center">
+                    <div class="text-[11px] font-bold text-amber-500 truncate max-w-full mb-1">${p3 ? p3.username : '—'}</div>
+                    <div class="text-[9px] font-mono text-neoncian mb-2">${p3 ? Number(p3.event_power).toFixed(9) : '0'} KWP</div>
+                    <div class="w-full h-20 sm:h-24 bg-gradient-to-t from-amber-950/80 to-amber-900/60 border-t-2 border-amber-600 rounded-t-xl flex flex-col items-center justify-center shadow-lg">
+                        <span class="text-xl sm:text-2xl font-black text-amber-500">#3</span>
+                        <span class="text-[9px] font-bold uppercase text-amber-600">Bronce</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRows(list) {
+            const rowsContainer = document.getElementById('leaderboard-rows');
+            rowsContainer.innerHTML = "";
+
+            list.forEach((item, index) => {
+                const rank = index + 1;
+                const row = document.createElement('div');
+                row.className = "px-6 py-3.5 flex items-center justify-between hover:bg-cardborder/40 transition text-sm";
+                
+                let rankBadge = `<span class="w-16 font-mono text-gray-400 font-bold text-xs">#${rank}</span>`;
+                let nameClass = "text-white font-bold";
+
+                if (rank === 1) {
+                    rankBadge = `<span class="w-16 font-black text-neongold flex items-center gap-1">★ 1.º</span>`;
+                    nameClass = "text-neongold font-black";
+                    row.className += " bg-yellow-950/20";
+                } else if (rank === 2) {
+                    rankBadge = `<span class="w-16 font-bold text-gray-300">2.º</span>`;
+                } else if (rank === 3) {
+                    rankBadge = `<span class="w-16 font-bold text-amber-600">3.º</span>`;
+                }
+
+                row.innerHTML = `
+                    ${rankBadge}
+                    <span class="flex-1 ${nameClass} uppercase tracking-wider">${item.username}</span>
+                    <span class="font-mono text-neoncian font-bold text-right">${Number(item.event_power).toFixed(9)} KWP</span>
+                `;
+                rowsContainer.appendChild(row);
+            });
+        }
+
+        function filterLeaderboard(query) {
+            if (!query) {
+                renderRows(fullLeaderboard);
+                return;
+            }
+            const filtered = fullLeaderboard.filter(i => i.username.toLowerCase().includes(query));
+            renderRows(filtered);
+        }
+    </script>
+</body>
+</html>

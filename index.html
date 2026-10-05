@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KILOWAT — Central Eléctrica Idle & Minijuegos</title>
+    <meta name="description" content="Domina la energía en medio del apagón. Simulador idle, minijuegos y torneos en Cuba.">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#05070a',
+                        cardbg: '#0a0d14',
+                        cardborder: '#161f30',
+                        neoncian: '#00f2ff',
+                        neongold: '#ffbe1a',
+                        neongreen: '#00ffa3'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-darkbg text-gray-200 font-sans antialiased overflow-x-hidden selection:bg-neoncian selection:text-black">
+
+    <canvas id="electric-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+    <div class="fixed inset-0 cyber-grid pointer-events-none z-0"></div>
+
+    <!-- NAVEGACIÓN SUPERIOR RESPONSIVA Y HOLGADA -->
+    <header class="fixed top-0 left-0 w-full z-50 bg-darkbg/95 backdrop-blur-md border-b border-cardborder">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            
+            <a href="#" class="flex items-center space-x-2 shrink-0">
+                <img src="assets/logo.png" 
+                     onerror="this.src='assets/logo.png'; this.onerror=null;" 
+                     alt="Logo" class="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,242,255,0.5)]">
+                <span class="text-xl sm:text-2xl font-black text-neoncian text-glow tracking-wider">KILOWAT</span>
+            </a>
+            
+            <!-- Enlaces de navegación (Ocultos en pantallas pequeñas para dar aire) -->
+            <nav class="hidden lg:flex space-x-6 text-sm font-semibold text-gray-400">
+                <a href="#descarga" class="hover:text-neoncian transition">Descargas</a>
+                <a href="#minijuegos" class="hover:text-neoncian transition">Minijuegos</a>
+                <a href="#central" class="hover:text-neoncian transition">Generadores</a>
+                <a href="#torneo" class="hover:text-neongold transition text-yellow-400">Torneo 1K</a>
+                <a href="#requisitos" class="hover:text-neoncian transition">Requisitos</a>
+            </nav>
+
+            <!-- BOTONES DE ACCIÓN COMPACTOS EN MÓVILES -->
+            <div class="flex items-center space-x-2 shrink-0">
+                <a href="torneo.html" class="px-2.5 sm:px-3 py-1.5 text-xs font-bold bg-yellow-950/60 border border-yellow-700/80 text-neongold rounded-lg hover:border-neongold transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 fill-current text-neongold" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1c1.88-.41 3.32-1.9 3.61-3.96C19.08 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2z"/></svg>
+                    <span class="hidden sm:inline">Torneo</span>
+                </a>
+
+                <a href="tienda.html" class="px-3 sm:px-4 py-1.5 text-xs font-black uppercase tracking-wider bg-gradient-to-r from-neongold to-yellow-400 text-black rounded-lg hover:scale-105 active:scale-95 transition glow-gold flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    <span>Tienda</span>
+                </a>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- PORTADA HERO -->
+    <section class="relative pt-24 pb-14 md:pt-36 md:pb-24 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+                
+                <div class="lg:col-span-7 text-center lg:text-left">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-cyan-950/70 border border-cyan-800 text-xs font-bold text-neoncian mb-6 glow-cyan">
+                        <span class="w-2 h-2 rounded-full bg-neongreen animate-ping"></span>
+                        <span id="live-power-indicator">Red Eléctrica: 1,482.000000000 KWP</span>
+                    </div>
+
+                    <h1 class="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none mb-6">
+                        DOMINA LA ENERGÍA EN MEDIO DEL <span class="text-transparent bg-clip-text bg-gradient-to-r from-neoncian via-cyan-300 to-neongold text-glow">APAGÓN</span>
+                    </h1>
+
+                    <p class="text-base sm:text-lg text-gray-400 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                        Instala estanterías, conecta estaciones de plasma continuo y compite en minijuegos de agilidad para mantener encendida tu central eléctrica.
+                    </p>
+
+                    <div id="descarga" class="scroll-mt-28 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                        <a href="https://github.com/mariaelenabernia3-jpg/kilowat-game/releases/latest" target="_blank"
+                           class="w-full sm:w-auto flex items-center justify-center space-x-3 px-8 py-4 bg-gradient-to-r from-neoncian to-cyan-400 text-black font-black text-sm uppercase tracking-wider rounded-xl hover:scale-105 active:scale-95 transition glow-cyan">
+                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0005 0-.5515.4482-1.0005.9993-1.0005.5516 0 .9997.449.9997 1.0005 0 .5519-.4481 1.0005-.9997 1.0005m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0005 0-.5515.4482-1.0005.9993-1.0005.5516 0 .9997.449.9997 1.0005 0 .5519-.4481 1.0005-.9997 1.0005m11.4045-6.02l1.9973-3.4592a.416.416 0 0 0-.1521-.5676.416.416 0 0 0-.5676.1521l-2.0223 3.503C15.5902 8.412 13.8533 8.1 12 8.1c-1.854 0-3.5908.312-5.1374.8497L4.8403 5.4467a.4161.4161 0 0 0-.5677-.1521.4157.4157 0 0 0-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.7895h24c-.3432-4.1306-2.6889-7.6028-6.1185-9.4681"/></svg>
+                            <div class="text-left">
+                                <div class="text-[9px] font-bold opacity-75 leading-none">Descargar APK</div>
+                                <div class="text-sm font-black leading-tight">Android (Móvil)</div>
+                            </div>
+                        </a>
+
+                        <a href="https://github.com/mariaelenabernia3-jpg/kilowat-game/releases/latest" target="_blank"
+                           class="w-full sm:w-auto flex items-center justify-center space-x-3 px-8 py-4 bg-cardbg border-2 border-cyan-800/80 text-white font-black text-sm uppercase tracking-wider rounded-xl hover:border-neoncian hover:bg-cardborder transition">
+                            <svg class="w-6 h-6 fill-current text-neoncian" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.801"/></svg>
+                            <div class="text-left">
+                                <div class="text-[9px] text-gray-400 font-bold leading-none">Ejecutable PC</div>
+                                <div class="text-sm font-black text-neoncian leading-tight">Windows</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PEDESTAL HOLOGRÁFICO CON GENERADOR FLOTANTE -->
+                <div class="lg:col-span-5 flex flex-col items-center justify-center relative">
+                    <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex flex-col items-center justify-center">
+                        
+                        <!-- INSIGNIA SUPERIOR: CENTRADA EXACTAMENTE CON LA IMAGEN -->
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-cardbg/95 border border-yellow-500/80 rounded-full text-xs font-bold text-neongold glow-gold shadow-lg flex items-center gap-1.5 whitespace-nowrap">
+                            <svg class="w-3.5 h-3.5 fill-current text-neongold shrink-0" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <span>0.000004500 kW/min</span>
+                        </div>
+
+                        <!-- Aura de luz de plasma -->
+                        <div class="absolute w-56 h-56 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
+                        
+                        <!-- Sprite de la Planta Flotando -->
+                        <div class="relative z-10 animate-float">
+                            <img src="assets/sprites/generators/cyber_tank.png" 
+                                 alt="Generador Cyber Tank" 
+                                 class="w-48 sm:w-56 h-auto drop-shadow-[0_15px_25px_rgba(0,242,255,0.4)] pixelated mx-auto">
+                        </div>
+
+                        <!-- Pedestal circular Sci-Fi -->
+                        <div class="absolute bottom-4 w-64 h-16 bg-cyan-950/80 border-2 border-neoncian rounded-[100%] glow-pedestal flex items-center justify-center">
+                            <div class="w-48 h-8 border border-cyan-400/50 rounded-[100%] animate-ping opacity-25"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- ETIQUETA INFERIOR: CENTRADA Y SIN CORTES EXTRAÑOS -->
+                    <div class="mt-3 inline-flex items-center justify-center gap-2 px-4 py-1.5 bg-yellow-950/80 border border-yellow-700/80 rounded-full text-xs font-black text-neongold uppercase tracking-wider text-center">
+                        <svg class="w-3.5 h-3.5 fill-current text-neongold shrink-0" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                        <span>CYBER TANK 100% — LÍMITE: 1 POR CUENTA</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- BANNER DEL TORNEO ÚNICO DE APERTURA -->
+    <section id="torneo" class="scroll-mt-28 py-16 border-t border-cardborder relative z-10 bg-gradient-to-b from-yellow-950/20 to-darkbg">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="p-8 sm:p-12 bg-cardbg border-2 border-yellow-500/70 rounded-3xl glow-gold relative overflow-hidden flex flex-col lg:flex-row items-center justify-between gap-8">
+                
+                <div class="space-y-4 text-center lg:text-left">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-yellow-950/80 border border-yellow-700 text-xs font-black text-neongold uppercase tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-neongold animate-ping"></span>
+                        <span>EVENTO EXCLUSIVO DE LANZAMIENTO</span>
+                    </div>
+
+                    <h2 class="text-3xl sm:text-4xl font-black text-white leading-tight">
+                        COMPETENCIA INAUGURAL DE POTENCIA
+                    </h2>
+
+                    <p class="text-sm text-gray-300 max-w-xl leading-relaxed">
+                        Evento especial por la apertura del juego. Compite en minijuegos durante estos días para liderar la tabla de posiciones. ¡Al finalizar el tiempo, el puesto #1 se lleva el premio mayor único!
+                    </p>
+
+                    <div class="flex flex-wrap items-center justify-center lg:justify-start gap-6 pt-2 text-xs">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-neongold fill-current" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1c1.88-.41 3.32-1.9 3.61-3.96C19.08 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2z"/></svg>
+                            <span class="text-gray-300">Premio al Ganador: <strong class="text-neongreen font-mono text-sm">1 KILOWAT (500 CUP)</strong></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-neoncian fill-current" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                            <span class="text-gray-300">Fin del Evento: <strong id="tournament-countdown" class="text-neoncian font-mono text-sm">Sincronizando...</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shrink-0 w-full sm:w-auto">
+                    <a href="torneo.html" class="w-full sm:w-auto inline-flex items-center justify-center space-x-3 px-8 py-4 bg-gradient-to-r from-neongold to-yellow-500 text-black font-black text-sm uppercase tracking-wider rounded-xl hover:scale-105 active:scale-95 transition glow-gold">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M16 11V3H8v6H2v12h20V11h-6zm-6-6h4v14h-4V5zm-6 8h4v6H4v-6zm16 6h-4v-8h4v8z"/></svg>
+                        <span>Ver Tabla de Posiciones</span>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN MINIJUEGOS -->
+    <section id="minijuegos" class="scroll-mt-28 py-20 border-t border-cardborder bg-darkbg/70 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-xs font-black uppercase tracking-widest text-neoncian bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800">
+                    SISTEMA DE ENTRETENIMIENTO
+                </span>
+                <h2 class="text-3xl sm:text-5xl font-black text-white mt-3">4 MINIJUEGOS ÁGILES</h2>
+                <p class="text-sm text-gray-400 mt-2">Cada victoria otorga potencia temporal para acelerar la minería en tu central.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="relative h-72 rounded-2xl overflow-hidden border border-cardborder group hover:border-yellow-500 hover:scale-105 transition-all duration-300">
+                    <img src="assets/sprites/minigames/coinclick/thumb.jpg" onerror="this.src='assets/sprites/minigames/coinclick/thumb.png'" alt="CoinClick" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-darkbg via-darkbg/80 to-transparent"></div>
+                    <div class="relative z-10 p-5 h-full flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 text-[9px] font-black bg-yellow-500 text-black rounded uppercase">HOT</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">CoinClick</h3>
+                            <p class="text-xs text-gray-300 leading-relaxed">Atrapa las monedas del mago en el aire antes de que caigan. ¡Esquiva las bombas!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative h-72 rounded-2xl overflow-hidden border border-cardborder group hover:border-neongreen hover:scale-105 transition-all duration-300">
+                    <img src="assets/sprites/minigames/flappy_rocket/thumb.webp" onerror="this.src='assets/sprites/minigames/flappy_rocket/thumb.png'" alt="Flappy Rocket" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-darkbg via-darkbg/80 to-transparent"></div>
+                    <div class="relative z-10 p-5 h-full flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 text-[9px] font-black bg-neongreen text-black rounded uppercase">CLASSIC</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">Flappy Rocket</h3>
+                            <p class="text-xs text-gray-300 leading-relaxed">Pilota tu cohete a través de las barras eléctricas de alto voltaje sin estrellarte.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative h-72 rounded-2xl overflow-hidden border border-cardborder group hover:border-purple-500 hover:scale-105 transition-all duration-300">
+                    <img src="assets/sprites/minigames/coin_match/thumb.webp" onerror="this.src='assets/sprites/minigames/coin_match/thumb.png'" alt="Coin Match" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-darkbg via-darkbg/80 to-transparent"></div>
+                    <div class="relative z-10 p-5 h-full flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 text-[9px] font-black bg-purple-500 text-white rounded uppercase">PUZZLE</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">Coin Match</h3>
+                            <p class="text-xs text-gray-300 leading-relaxed">Conecta 3 o más criptomonedas iguales en el tablero y crea cascadas de puntos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative h-72 rounded-2xl overflow-hidden border border-cardborder group hover:border-neoncian hover:scale-105 transition-all duration-300">
+                    <img src="assets/sprites/minigames/crypto_memory/thumb.webp" onerror="this.src='assets/sprites/minigames/crypto_memory/thumb.png'" alt="Crypto Memory" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-darkbg via-darkbg/80 to-transparent"></div>
+                    <div class="relative z-10 p-5 h-full flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 text-[9px] font-black bg-neoncian text-black rounded uppercase">MEMORIA</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-1">Crypto Memory</h3>
+                            <p class="text-xs text-gray-300 leading-relaxed">Voltea las cartas y encuentra las parejas antes de que el reloj de la central llegue a cero.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN DE LA CENTRAL -->
+    <section id="central" class="scroll-mt-28 py-20 border-t border-cardborder relative z-10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <span class="text-xs font-black uppercase tracking-widest text-neongold bg-yellow-950/60 px-3 py-1 rounded-full border border-yellow-800">
+                        SISTEMA DE MINADO
+                    </span>
+                    <h2 class="text-3xl sm:text-5xl font-black text-white mt-3 mb-6">ARMA TU CENTRAL EN ESTANTERÍAS</h2>
+                    <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                        Cada jugador cuenta con un cuarto modular. Puedes equipar estanterías de 1, 2 o 3 pisos y montar hasta 6 generadores simultáneos por rack.
+                    </p>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-neoncian fill-current shrink-0" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong>Doble Moneda:</strong> Genera WATT para tienda y KILOWAT extraíble.</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-neongold fill-current shrink-0" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong>Pase de Temporada:</strong> 20 niveles con generadores gratis y fondos de cuarto.</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong>Torneo Semanal:</strong> El puesto #1 gana 1 KILOWAT (500 CUP) a su cuenta.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-cardbg border-2 border-cardborder rounded-2xl p-6 glow-cyan">
+                    <h3 class="text-xs font-black text-neoncian uppercase tracking-wider mb-4 text-center">Catálogo de Producción Base</h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="flex justify-between items-center p-2.5 bg-darkbg/90 rounded-lg border border-cardborder">
+                            <div class="flex items-center space-x-3">
+                                <img src="assets/sprites/generators/plantalevel1.png" alt="Planta Meme" class="w-8 h-8 object-contain pixelated">
+                                <span class="font-bold text-white">Planta Meme (Debut)</span>
+                            </div>
+                            <span class="font-mono text-neoncian font-bold">0.000000010 kW/min</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2.5 bg-darkbg/90 rounded-lg border border-cardborder">
+                            <div class="flex items-center space-x-3">
+                                <img src="assets/sprites/generators/dinamo_manual.png" alt="Dinamo Manual" class="w-8 h-8 object-contain pixelated">
+                                <span class="font-bold text-white">Dinamo Manual (Pase)</span>
+                            </div>
+                            <span class="font-mono text-neoncian font-bold">0.000000090 kW/min</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2.5 bg-darkbg/90 rounded-lg border border-cardborder">
+                            <div class="flex items-center space-x-3">
+                                <img src="assets/sprites/generators/panel_solar.png" alt="Panel Solar" class="w-8 h-8 object-contain pixelated">
+                                <span class="font-bold text-white">Panel Solar (Pase Nv.20)</span>
+                            </div>
+                            <span class="font-mono text-neoncian font-bold">0.000000800 kW/min</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2.5 bg-darkbg/90 rounded-lg border border-cardborder">
+                            <div class="flex items-center space-x-3">
+                                <img src="assets/sprites/generators/delta_mini.png" alt="DELTA Mini" class="w-8 h-8 object-contain pixelated">
+                                <span class="font-bold text-white">EcoFlow DELTA Mini</span>
+                            </div>
+                            <span class="font-mono text-neoncian font-bold">0.000001200 kW/min</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2.5 bg-darkbg/90 rounded-lg border border-yellow-700/60">
+                            <div class="flex items-center space-x-3">
+                                <img src="assets/sprites/generators/cyber_tank.png" alt="Cyber Tank" class="w-8 h-8 object-contain pixelated">
+                                <span class="font-bold text-neongold">Cyber Tank 100% (Especial)</span>
+                            </div>
+                            <span class="font-mono text-neongold font-black">0.000004500 kW/min</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN REQUISITOS DEL SISTEMA -->
+    <section id="requisitos" class="scroll-mt-28 py-20 border-t border-cardborder relative z-10 bg-darkbg/50">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <span class="text-xs font-black uppercase tracking-widest text-neoncian bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800">
+                    SOPORTE DE HARDWARE
+                </span>
+                <h2 class="text-3xl sm:text-4xl font-black text-white mt-3">REQUISITOS DEL SISTEMA</h2>
+                <p class="text-sm text-gray-400 mt-2">Optimizado para funcionar con fluidez en dispositivos de gama modesta y media.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="p-6 bg-cardbg border border-cardborder rounded-2xl hover:border-cyan-800 transition">
+                    <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-cardborder">
+                        <div class="p-2.5 bg-cyan-950/60 border border-cyan-800 rounded-xl text-neoncian">
+                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-1.0005 0-.5515.4482-1.0005.9993-1.0005.5516 0 .9997.449.9997 1.0005 0 .5519-.4481 1.0005-.9997 1.0005m-11.046 0c-.5511 0-.9993-.4486-.9993-1.0005 0-.5515.4482-1.0005.9993-1.0005.5516 0 .9997.449.9997 1.0005 0 .5519-.4481 1.0005-.9997 1.0005m11.4045-6.02l1.9973-3.4592a.416.416 0 0 0-.1521-.5676.416.416 0 0 0-.5676.1521l-2.0223 3.503C15.5902 8.412 13.8533 8.1 12 8.1c-1.854 0-3.5908.312-5.1374.8497L4.8403 5.4467a.4161.4161 0 0 0-.5677-.1521.4157.4157 0 0 0-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.7895h24c-.3432-4.1306-2.6889-7.6028-6.1185-9.4681"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-white">Android (Móvil)</h3>
+                            <p class="text-xs text-neoncian font-mono">Compatible con +95% de terminales</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-3 text-xs sm:text-sm text-gray-400">
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Versión:</strong> Android 8.0 (Oreo) o superior.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Motor Gráfico:</strong> Compatible con OpenGL ES 3.0.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Almacenamiento:</strong> 120 MB libres para caché y parches.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="p-6 bg-cardbg border border-cardborder rounded-2xl hover:border-cyan-800 transition">
+                    <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-cardborder">
+                        <div class="p-2.5 bg-cyan-950/60 border border-cyan-800 rounded-xl text-neoncian">
+                            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.801"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-lg text-white">Windows (PC)</h3>
+                            <p class="text-xs text-neoncian font-mono">Ejecutable autónomo (.exe)</p>
+                        </div>
+                    </div>
+                    <ul class="space-y-3 text-xs sm:text-sm text-gray-400">
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Sistema:</strong> Windows 10 o Windows 11 (64-bit).</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Gráficos:</strong> GPU con soporte DirectX 11 o Vulkan.</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <svg class="w-4 h-4 text-neongreen fill-current shrink-0 mt-0.5" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                            <span><strong class="text-gray-200">Memoria RAM:</strong> 2 GB o superior.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="py-12 bg-darkbg border-t border-cardborder text-center text-xs text-gray-500 relative z-10 pb-24 sm:pb-12">
+        <div class="max-w-5xl mx-auto px-4 space-y-3">
+            <p class="text-sm font-black text-neoncian tracking-wider">KILOWAT — SISTEMA DE GENERACIÓN INDIE</p>
+            <p class="flex items-center justify-center gap-1.5">
+                <span>Atención directa por WhatsApp:</span>
+                <a href="https://wa.me/5356471292" target="_blank" class="text-neoncian hover:underline font-bold">+53 56471292</a>
+            </p>
+            <p>© 2026 KiloWatt Game. Desarrollado con Godot 4 & Supabase.</p>
+        </div>
+    </footer>
+
+    <!-- BARRA INFERIOR FLOTANTE MÓVIL (COMPACTA) -->
+    <div class="fixed bottom-0 left-0 w-full z-40 p-2.5 bg-darkbg/95 backdrop-blur-lg border-t border-cyan-800/80 sm:hidden flex items-center justify-between gap-3">
+        <div class="flex items-center space-x-2">
+            <img src="assets/logo.png" 
+                 onerror="this.src='assets/Generated_Image_October_03__2026_-_4_28PM-removebg-preview.png'; this.onerror=null;" 
+                 alt="Logo" class="w-7 h-7 object-contain">
+            <div>
+                <div class="text-xs font-black text-white leading-tight">KILOWAT</div>
+            </div>
+        </div>
+        <a href="https://github.com/mariaelenabernia3-jpg/kilowat-game/releases/latest" target="_blank"
+           class="px-4 py-2 bg-neoncian text-black font-black text-xs uppercase tracking-wider rounded-lg glow-cyan flex items-center gap-1.5 active:scale-95 transition">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+            <span>APK Móvil</span>
+        </a>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/landing.js"></script>
+</body>
+</html>

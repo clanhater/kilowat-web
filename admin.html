@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KILOWAT — Panel de Aprobaciones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#05070a',
+                        cardbg: '#0a0d14',
+                        cardborder: '#161f30',
+                        neoncian: '#00f2ff',
+                        neongold: '#ffbe1a',
+                        neongreen: '#00ffa3',
+                        neonred: '#ff3366'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkbg text-gray-200 font-sans antialiased selection:bg-neongold selection:text-black">
+
+    <div class="fixed inset-0 cyber-grid pointer-events-none z-0"></div>
+
+    <!-- ENCABEZADO -->
+    <header class="fixed top-0 left-0 w-full z-40 bg-darkbg/95 backdrop-blur-md border-b border-cardborder">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-neongold animate-ping"></span>
+                <h1 class="text-sm sm:text-base font-black text-white tracking-wider">PANEL DE CONTROL</h1>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="fetchOrders()" class="p-2 bg-cardbg border border-cardborder hover:border-neoncian rounded-xl text-neoncian text-xs font-bold transition flex items-center gap-1.5 active:scale-95">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    <span class="hidden sm:inline">Actualizar</span>
+                </button>
+                <button onclick="changeAdminPin()" class="text-xs text-gray-400 hover:text-white underline">Cambiar PIN</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO -->
+    <main class="max-w-5xl mx-auto px-4 pt-24 pb-20 relative z-10">
+        
+        <!-- PESTAÑAS DE ESTADO -->
+        <div class="flex items-center justify-center gap-2 mb-8">
+            <button onclick="switchTab('pending')" id="tab-pending" class="px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-yellow-950 border border-neongold text-neongold transition">
+                Pendientes (<span id="count-pending">0</span>)
+            </button>
+            <button onclick="switchTab('approved')" id="tab-approved" class="px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-cardbg border border-cardborder text-gray-400 hover:text-white transition">
+                Aprobados
+            </button>
+            <button onclick="switchTab('rejected')" id="tab-rejected" class="px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-cardbg border border-cardborder text-gray-400 hover:text-white transition">
+                Rechazados
+            </button>
+        </div>
+
+        <!-- LISTA DE PEDIDOS -->
+        <div id="orders-container" class="space-y-4">
+            <div class="text-center py-16 text-sm text-gray-500 font-bold animate-pulse">
+                Cargando comprobantes desde Supabase...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SCRIPTS -->
+    <script src="js/config.js"></script>
+    <script>
+        let currentTab = 'pending';
+        let allOrders = [];
+        let adminPin = localStorage.getItem('kilowat_admin_pin') || '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!adminPin) {
+                promptAdminPin();
+            } else {
+                fetchOrders();
+            }
+        });
+
+        function promptAdminPin() {
+            const input = prompt("Introduce tu PIN Maestro de Administrador:");
+            if (input) {
+                adminPin = input.trim();
+                localStorage.setItem('kilowat_admin_pin', adminPin);
+                fetchOrders();
+            } else {
+                alert("Debes ingresar el PIN para gestionar los pedidos.");
+            }
+        }
+
+        function changeAdminPin() {
+            localStorage.removeItem('kilowat_admin_pin');
+            promptAdminPin();
+        }
+
+        async function fetchOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = `<div class="text-center py-16 text-sm text-gray-500 font-bold animate-pulse">Consultando Supabase...</div>`;
+
+            const { data, error } = await supabaseClient
+                .from('payment_orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error || !data) {
+                container.innerHTML = `<div class="text-center py-12 text-sm text-red-400 font-bold">Error al cargar pedidos. Verifica tu conexión.</div>`;
+                return;
+            }
+
+            allOrders = data;
+            updateCounters();
+            renderOrders();
+        }
+
+        function updateCounters() {
+            const pending = allOrders.filter(o => o.status === 'pending').length;
+            document.getElementById('count-pending').innerText = pending;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            ['pending', 'approved', 'rejected'].forEach(t => {
+                const btn = document.getElementById('tab-' + t);
+                if (t === tab) {
+                    btn.className = "px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-yellow-950 border border-neongold text-neongold transition";
+                } else {
+                    btn.className = "px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl bg-cardbg border border-cardborder text-gray-400 hover:text-white transition";
+                }
+            });
+            renderOrders();
+        }
+
+        // Diccionario de traducción de códigos internos a nombres humanos
+        const NOMBRES_ARTICULOS = {
+            'pack_1_kilo': '1 KILOWAT (500 CUP)',
+            'pack_4_kilo': '4 KILOWAT (Pack Ahorro - 2,000 CUP)',
+            'pack_5_watt': '5 WATT (500 CUP)',
+            'premium_pass': 'Pase de Batalla Premium T1 (1,000 CUP)',
+            'cyber_tank': 'Cyber Tank 100% (500 CUP)',
+            'ecoflow_ultra': 'EcoFlow Ultra (250 CUP)'
+        };
+
+        function obtenerNombreLegible(id) {
+            return NOMBRES_ARTICULOS[id] || id;
+        }
+
+        function renderOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = "";
+
+            const filtered = allOrders.filter(o => o.status === currentTab);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 text-sm text-gray-500 font-bold bg-cardbg border border-cardborder rounded-2xl">
+                        No hay pedidos en la sección "${currentTab.toUpperCase()}".
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(order => {
+                const card = document.createElement('div');
+                card.className = "p-5 bg-cardbg border border-cardborder rounded-2xl relative overflow-hidden transition hover:border-cyan-900";
+                
+                const fecha = new Date(order.created_at).toLocaleString('es-ES', { 
+                    dateStyle: 'short', timeStyle: 'short' 
+                });
+
+                // Lista de artículos traducida a texto 100% legible
+                let itemsDetail = `<span class="text-white font-bold">${obtenerNombreLegible(order.package_id)}</span>`;
+                if (order.cart_items && Array.isArray(order.cart_items) && order.cart_items.length > 0) {
+                    itemsDetail = order.cart_items.map(i => `
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-darkbg border border-cardborder rounded-lg text-xs text-gray-200 mr-2 mt-1.5 font-medium">
+                            <span class="text-neongold font-bold font-mono">${i.qty}x</span>
+                            <span>${obtenerNombreLegible(i.id)}</span>
+                        </div>
+                    `).join('');
+                }
+
+                let actionsHtml = "";
+                if (order.status === 'pending') {
+                    actionsHtml = `
+                        <div class="flex items-center gap-2 pt-4 border-t border-cardborder mt-4">
+                            <button onclick="approveOrder('${order.id}')" class="flex-1 py-2.5 bg-neongreen/20 border border-neongreen text-neongreen hover:bg-neongreen hover:text-black font-black text-xs uppercase tracking-wider rounded-xl transition active:scale-95 flex items-center justify-center gap-1.5">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span>Aprobar y Acreditar</span>
+                            </button>
+                            <button onclick="rejectOrder('${order.id}')" class="px-4 py-2.5 bg-red-950/40 border border-red-800 text-red-400 hover:bg-red-800 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition active:scale-95">
+                                Rechazar
+                            </button>
+                        </div>
+                    `;
+                } else if (order.status === 'approved') {
+                    actionsHtml = `<div class="pt-3 border-t border-cardborder mt-3 text-xs text-neongreen font-bold flex items-center gap-1.5">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <span>Acreditado con éxito en la cuenta del jugador</span>
+                    </div>`;
+                } else {
+                    actionsHtml = `<div class="pt-3 border-t border-cardborder mt-3 text-xs text-red-400 font-bold">✕ Rechazado: ${order.admin_notes || 'Sin nota'}</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-cardborder/60">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono font-bold text-gray-500">ORDEN: #${order.id.substring(0,8)}</span>
+                            <span class="text-xs text-gray-400">• ${fecha}</span>
+                        </div>
+                        <div class="text-lg font-black text-neongold font-mono">${Number(order.amount_cup).toLocaleString()} CUP</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 text-xs">
+                        <div>
+                            <span class="text-gray-400 uppercase font-bold text-[10px] block mb-0.5">Cuenta a recargar:</span>
+                            <strong class="text-white text-sm font-mono bg-darkbg px-2.5 py-1 rounded border border-cardborder inline-block">${order.username}</strong>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 uppercase font-bold text-[10px] block mb-0.5">Comprobante Transfermóvil:</span>
+                            <div class="flex items-center gap-2">
+                                <strong class="text-neoncian text-sm font-mono tracking-wider bg-darkbg px-2.5 py-1 rounded border border-cyan-900">${order.telebanca_code}</strong>
+                                <button onclick="navigator.clipboard.writeText('${order.telebanca_code}')" class="text-xs text-gray-400 hover:text-white underline">Copiar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <span class="text-gray-400 uppercase font-bold text-[10px] block mb-1">Paquetes solicitados:</span>
+                        <div class="flex flex-wrap">${itemsDetail}</div>
+                    </div>
+
+                    ${actionsHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function approveOrder(orderId) {
+            if (!confirm("¿Confirmas que recibiste la transferencia en tu tarjeta?")) return;
+
+            const { data, error } = await supabaseClient.rpc('approve_payment_order', {
+                p_order_id: orderId,
+                p_admin_secret: adminPin
+            });
+
+            if (error || !data || !data.success) {
+                alert("Error: " + ((data && data.error) ? data.error : error.message));
+            } else {
+                alert("✓ ¡Pago aprobado! El saldo fue entregado automáticamente al jugador.");
+                fetchOrders();
+            }
+        }
+
+        async function rejectOrder(orderId) {
+            const reason = prompt("Motivo del rechazo (ej: Código no existe, Monto incompleto):", "Código de SMS no coincide con el banco");
+            if (!reason) return;
+
+            const { data, error } = await supabaseClient.rpc('reject_payment_order', {
+                p_order_id: orderId,
+                p_admin_secret: adminPin,
+                p_reason: reason
+            });
+
+            if (error || !data || !data.success) {
+                alert("Error: " + ((data && data.error) ? data.error : error.message));
+            } else {
+                fetchOrders();
+            }
+        }
+    </script>
+</body>
+</html>
