@@ -16,4 +16,6 @@ const CONFIG = {
 };
 
 // Inicialización del cliente Supabase
-const supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const supabaseClient = (typeof supabase !== 'undefined') 
+    ? supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) 
+    : null;
